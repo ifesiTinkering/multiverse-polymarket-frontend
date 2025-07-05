@@ -1,7 +1,7 @@
 /* global ethers **********************************************/
 
 const FACTORY_ADDR = "0x63a9F0360e073688854099cc2A9Ca931B006a91A";
-const UMA_ADAPTER  = "0x2F5e3684Cb1F318eC51B00eDba38d79AC2c0Aa9d";
+const UMA_ADAPTER  = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d";
 
 const FACTORY_ABI = [
   "function partition(address parent,address oracle,bytes32 questionId)"
