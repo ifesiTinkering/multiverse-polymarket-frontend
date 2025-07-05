@@ -99,18 +99,33 @@ const ERC20_ABI = [
       const iface   = new ethers.Interface(FACTORY_ABI);
        // keccak256("VaultCreated(address,bytes32,address,address,address)")
        const eventId = ethers.id(
-         "VaultCreated(address,bytes32,address,address,address)"
-      );
-      const logs = await provider.getLogs({
-        address: FACTORY_ADDR,
-        topics: [
-          eventId,
-          ethers.zeroPadValue(parentAddr, 32),          // indexed parentToken
-          qId                                           // indexed questionId
-        ],
-        fromBlock: 0,
-        toBlock  : "latest"
-      });
+  "VaultCreated(address,bytes32,address,address,address)"
+);
+
+const filterBase = {
+  address: FACTORY_ADDR,
+  topics: [
+    eventId,
+   ethers.zeroPadValue(parentAddr, 32),   // indexed parentToken
+   qId                                    // indexed questionId
+  ]
+};
+
+const latest   = await provider.getBlockNumber();
+const STEP     = 40_000;                   // Polygon log-range safe size
+let   logs     = [];
+
+for (let from = latest; from > 0 && logs.length === 0; from -= STEP) {
+ const to = from;
+  const fr = Math.max(1, from - STEP + 1);
+  try {
+    logs = await provider.getLogs({ ...filterBase,
+                                   fromBlock: ethers.hexValue(fr),
+                                   toBlock  : ethers.hexValue(to) });
+ } catch (_) {
+   /* ignore window-size or archive-range errors and keep scanning */
+  }
+}
   
       let vAddr, yesToken, noToken, created = false, txHash = "";
   
