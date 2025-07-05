@@ -96,10 +96,11 @@ const ERC20_ABI = [
   
       const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
       const fac   = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
-      const iface = new ethers.Interface(FACTORY_ABI);
-  
-      /* step-A: look for VaultCreated logs (fast, no revert risk) */
-      const eventId = iface.getEventTopic("VaultCreated");
+      const iface   = new ethers.Interface(FACTORY_ABI);
+       // keccak256("VaultCreated(address,bytes32,address,address,address)")
+       const eventId = ethers.id(
+         "VaultCreated(address,bytes32,address,address,address)"
+      );
       const logs = await provider.getLogs({
         address: FACTORY_ADDR,
         topics: [
