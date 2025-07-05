@@ -67,16 +67,16 @@ document.getElementById("btnCreate").onclick = async () => {
 
     const tx = await factory.partition(parentAddr, UMA_ADAPTER, qId);
     const rc = await tx.wait();
-    const { vault, yesToken, noToken } =
-      rc.logs.find(l => l.fragment?.name === "VaultCreated").args;
+    const { vault: vaultAddr, yesToken, noToken } =
+     rc.logs.find(l => l.fragment?.name === "VaultCreated").args;
 
-    // cache contracts
-    vault       = new ethers.Contract(vault, VAULT_ABI, signer);
+   // cache contracts (global vars)
+   vault       = new ethers.Contract(vaultAddr, VAULT_ABI, signer);
     parentToken = new ethers.Contract(parentAddr, ERC20_ABI, signer);
 
     // pre-fill UI
-    document.getElementById("vaultAddress").value  = vault.target;
-    document.getElementById("vaultAddress2").value = vault.target;
+    document.getElementById("vaultAddress").value  = vaultAddr;
+        document.getElementById("vaultAddress2").value = vaultAddr;
     document.getElementById("createOut").textContent =
       `Vault: ${vault.target}\nYES:  ${yesToken}\nNO :  ${noToken}`;
   } catch (e) {
@@ -87,10 +87,11 @@ document.getElementById("btnCreate").onclick = async () => {
 /* ─── 2. PUSH DOWN ─────────────────────────────────────────── */
 document.getElementById("btnPush").onclick = async () => {
   try {
-    const dec  = await decimals(parentToken.target);
+    if (!vault || !parentToken) throw new Error("Create a vault first.");
+    const dec  = await parentToken.decimals();
     const amt  = ethers.parseUnits(
                    document.getElementById("moveAmount").value.trim(), dec);
-    await (await parentToken.approve(vault.target, amt)).wait();
+    await (await parentToken.approve(vault, amt)).wait();
     await (await vault.pushDown(amt)).wait();
     document.getElementById("moveOut").textContent = "pushDown() ✅";
   } catch (e) { document.getElementById("moveOut").textContent = e.message; }
@@ -99,7 +100,8 @@ document.getElementById("btnPush").onclick = async () => {
 /* ─── 3. PULL UP ───────────────────────────────────────────── */
 document.getElementById("btnPull").onclick = async () => {
   try {
-    const dec  = await decimals(parentToken.target);
+    if (!vault || !parentToken) throw new Error("Create a vault first.");
+    const dec  = await parentToken.decimals();
     const amt  = ethers.parseUnits(
                    document.getElementById("moveAmount").value.trim(), dec);
     await (await vault.pullUp(amt)).wait();
@@ -120,7 +122,8 @@ document.getElementById("btnCheck").onclick = async () => {
 /* ─── 5. SETTLE ────────────────────────────────────────────── */
 document.getElementById("btnSettle").onclick = async () => {
   try {
-    const dec  = await decimals(parentToken.target);
+    if (!vault || !parentToken) throw new Error("Create a vault first.");
+    const dec  = await parentToken.decimals();
     const amt  = ethers.parseUnits(
                    document.getElementById("settleAmount").value.trim(), dec);
     await (await vault.settle(amt)).wait();
