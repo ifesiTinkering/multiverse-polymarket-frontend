@@ -1,13 +1,15 @@
 /* global ethers **********************************************/
 
 /* ─── constants ───────────────────────────────────────────── */
-const FACTORY_ADDR = "0x63a9F0360e073688854099cc2A9Ca931B006a91A";
-const UMA_ADAPTER  = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d";
+const FACTORY_ADDR = "0x63a9F0360e073688854099cc2A9Ca931B006a91A";   // MultiverseFactory
+const UMA_ADAPTER  = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d";   // UMA v3 (Polygon)
 
 /* ─── ABIs ────────────────────────────────────────────────── */
 const FACTORY_ABI = [
   "function partition(address parent,address oracle,bytes32 questionId)" +
-  " returns(address vault,address yesToken,address noToken)"
+  " returns(address vault,address yesToken,address noToken)",
+  "event VaultCreated(address indexed parentToken,bytes32 indexed questionId," +
+  "address vault,address yesToken,address noToken)"
 ];
 
 const VAULT_ABI = [
@@ -24,10 +26,10 @@ const ERC20_ABI = [
   "function approve(address,uint256)"
 ];
 
-/* ─── globals (filled at runtime) ─────────────────────────── */
+/* ─── globals ─────────────────────────────────────────────── */
 let provider, signer, vault, parentToken;
 
-/* ─── connect helpers ─────────────────────────────────────── */
+/* ─── wallet helpers ──────────────────────────────────────── */
 async function connectWallet() {
   if (!window.ethereum) throw new Error("Install MetaMask");
   provider = new ethers.BrowserProvider(window.ethereum);
@@ -36,7 +38,7 @@ async function connectWallet() {
 }
 async function ensureWallet() { if (!signer) await connectWallet(); }
 
-/* ─── text helpers ───────────────────────────────────────── */
+/* ─── misc helpers ───────────────────────────────────────── */
 function slugFromUrl(url) {
   try { const p = new URL(url).pathname.split("/"); return p.pop() || p.pop(); }
   catch { return ""; }
@@ -48,13 +50,13 @@ async function fetchQuestionId(slug) {
   return j.data[0].question_id;
 }
 
-/* ─── vault sync when user edits the address boxes ────────── */
+/* ─── keep vault & parentToken in sync ───────────────────── */
 async function updateVault(addr) {
   if (!ethers.isAddress(addr)) return;
   await ensureWallet();
   vault = new ethers.Contract(addr, VAULT_ABI, signer);
-  const parentAddr = await vault.parent();
-  parentToken = new ethers.Contract(parentAddr, ERC20_ABI, signer);
+  const pAddr = await vault.parent();
+  parentToken = new ethers.Contract(pAddr, ERC20_ABI, signer);
   document.getElementById("vaultAddress").value  = addr;
   document.getElementById("vaultAddress2").value = addr;
 }
@@ -62,40 +64,67 @@ async function updateVault(addr) {
   document.getElementById(id).addEventListener("change",
     e => updateVault(e.target.value.trim())));
 
+/* ─── set button label right away ────────────────────────── */
+document.getElementById("btnCreate").textContent = "Fetch or Create Vault";
 
 /* ─── 1. FETCH **or** CREATE VAULT ───────────────────────── */
 document.getElementById("btnCreate").onclick = async () => {
   try {
     await ensureWallet();
-
     const marketUrl  = document.getElementById("marketUrl").value.trim();
-    const parentAddr = document.getElementById("parentToken").value.trim();
+    const parentAddr = ethers.getAddress(
+      document.getElementById("parentToken").value.trim()
+    );
     if (!marketUrl || !parentAddr) throw new Error("Fill both inputs");
 
-    const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
-    const fac   = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
+    /* step-1: derive questionId from Polymarket slug */
+    const qId  = await fetchQuestionId(slugFromUrl(marketUrl));
 
-    let vAddr, yesToken, noToken, txHash, created = false;
+    /* step-2: look for an existing VaultCreated log */
+    const iface   = new ethers.Interface(FACTORY_ABI);
+    const eventId = iface.getEventTopic("VaultCreated");
 
-    /* first try a static call – succeeds if vault already exists */
-    try {
-      [vAddr, yesToken, noToken] =
-        await fac.partition.staticCall(parentAddr, UMA_ADAPTER, qId);
-    } catch (_) {
-      /* vault doesn’t exist – send a real tx to create it */
-      const rc = await (await fac.partition(parentAddr, UMA_ADAPTER, qId)).wait();
-      ({ vault: vAddr, yesToken, noToken } =
-        rc.logs.find(l => l.fragment?.name === "VaultCreated").args);
-      txHash  = rc.hash;
-      created = true;
+    const logs = await provider.getLogs({
+      address: FACTORY_ADDR,
+      topics: [
+        eventId,
+        ethers.hexZeroPad(parentAddr, 32),  // indexed parentToken
+        qId                                  // indexed questionId
+      ],
+      fromBlock: 0,
+      toBlock  : "latest"
+    });
+
+    let vAddr, yesToken, noToken, created = false, txHash = "";
+
+    if (logs.length) {
+      /* vault already exists */
+      const parsed = iface.parseLog(logs[logs.length - 1]);
+      ({ vault: vAddr, yesToken, noToken } = parsed.args);
+    } else {
+      /* vault absent – run partition() */
+      const factory = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
+
+      /* try static-call first (cheap): if it reverts we just send the tx */
+      try {
+        [vAddr, yesToken, noToken] =
+          await factory.partition.staticCall(parentAddr, UMA_ADAPTER, qId);
+      } catch {
+        const rc = await (await factory.partition(parentAddr, UMA_ADAPTER, qId)).wait();
+        ({ vault: vAddr, yesToken, noToken } =
+          rc.logs.find(l => l.fragment?.name === "VaultCreated").args);
+        created = true;
+        txHash  = rc.hash;
+      }
     }
 
-    await updateVault(vAddr);   // sets globals + fills both inputs
+    await updateVault(vAddr);
 
     document.getElementById("createOut").textContent =
-      (created ? `Vault created (tx ${txHash.slice(0,10)}...) ✅\n`
+      (created ? `Vault created (tx ${txHash.slice(0,10)}…) ✅\n`
                : "Existing vault fetched ✅\n") +
       `Vault: ${vAddr}\nYES : ${yesToken}\nNO  : ${noToken}`;
+
   } catch (e) {
     document.getElementById("createOut").textContent = "Error: " + e.message;
   }
@@ -138,7 +167,7 @@ document.getElementById("btnCheck").onclick = async () => {
 
     const done = await vault.resolved();
     document.getElementById("settleOut").textContent =
-      done ? `Resolved – winning index = ${await vault.winningIndex()}`
+      done ? `Resolved - winning index = ${await vault.winningIndex()}`
            : "Not resolved yet";
   } catch (e) { document.getElementById("settleOut").textContent = e.message; }
 };
