@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multiverse Vault Demo</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.min.js"></script>
+</head>
+<body>
+  <h2>Multiverse Tokens Factory Playground</h2>
+
+  <!-- 1. CREATE VAULT -->
+  <section id="create">
+    <h3>Create vault</h3>
+
+    <label>Polymarket market URL
+      <input id="marketUrl" type="text"
+             placeholder="https://polymarket.com/market/bitcoin-above-105000-on-feb-7">
+    </label>
+
+    <label>ERC-20 to wrap (parent token)
+      <input id="parentToken" type="text"
+             placeholder="0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619">
+    </label>
+
+    <button id="btnCreate">Create Vault</button>
+    <div id="createOut" class="out"></div>
+  </section>
+
+  <!-- 2. PUSH / PULL -->
+  <section id="move">
+    <h3>Push Down / Pull Up</h3>
+    <label>Vault
+      <input id="vaultAddress" type="text" readonly>
+    </label>
+    <label>Amount
+      <input id="moveAmount" type="text" placeholder="e.g. 0.001">
+    </label>
+    <button id="btnPush">Push Down</button>
+    <button id="btnPull">Pull Up (equal YES+NO)</button>
+    <div id="moveOut" class="out"></div>
+  </section>
+
+  <!-- 3. RESOLUTION / SETTLE -->
+  <section id="settle">
+    <h3>Check resolution / Settle</h3>
+    <label>Vault
+      <input id="vaultAddress2" type="text" readonly>
+    </label>
+    <button id="btnCheck">Check Resolution</button>
+    <label>Amount to settle (winning verse)
+      <input id="settleAmount" type="text" placeholder="e.g. 0.0005">
+    </label>
+    <button id="btnSettle">Settle</button>
+    <div id="settleOut" class="out"></div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
