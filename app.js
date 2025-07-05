@@ -112,16 +112,7 @@ const ERC20_ABI = [
         txHash  = rc.hash;
       }
 
-      if (logs.length) {
-        ({ vault: vAddr, yesToken, noToken } = iface.parseLog(logs.at(-1)).args);
-      } else {
-        /* step-B: vault not yet deployed – call partition() */
-        const rc = await (await fac.partition(parentAddr, UMA_ADAPTER, qId)).wait();
-        ({ vault: vAddr, yesToken, noToken } =
-          rc.logs.find(l => l.fragment?.name === "VaultCreated").args);
-        created = true;
-        txHash  = rc.hash;
-      }
+ 
   
       await updateVault(vAddr);
   
