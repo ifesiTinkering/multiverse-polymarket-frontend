@@ -14,16 +14,14 @@
     <h3>Create vault</h3>
 
     <label>Polymarket market URL
-      <input id="marketUrl" type="text"
-             placeholder="https://polymarket.com/market/bitcoin-above-105000-on-feb-7">
+      <input id="marketUrl" type="text" value="https://polymarket.com/market/bitcoin-above-105000-on-feb-7">
     </label>
 
     <label>ERC-20 to wrap (parent token)
-      <input id="parentToken" type="text"
-             placeholder="0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619">
+      <input id="parentToken" type="text" value="0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619">
     </label>
 
-    <button id="btnCreate">Create Vault</button>
+    <button id="btnCreate">Fetch or Create Vault</button>
     <div id="createOut" class="out"></div>
   </section>
 
@@ -31,7 +29,7 @@
   <section id="move">
     <h3>Push Down / Pull Up</h3>
     <label>Vault
-      <input id="vaultAddress" type="text" readonly>
+      <input id="vaultAddress" type="text">
     </label>
     <label>Amount
       <input id="moveAmount" type="text" placeholder="e.g. 0.001">
@@ -45,7 +43,7 @@
   <section id="settle">
     <h3>Check resolution / Settle</h3>
     <label>Vault
-      <input id="vaultAddress2" type="text" readonly>
+      <input id="vaultAddress2" type="text">
     </label>
     <button id="btnCheck">Check Resolution</button>
     <label>Amount to settle (winning verse)
