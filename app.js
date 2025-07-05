@@ -18,8 +18,8 @@ const VAULT_ABI = [
   "function settle(uint256)",
   "function resolved() view returns (bool)",
   "function winningIndex() view returns (uint8)",
-  "function parent() view returns (address)",
-  // **← this is missing in early vaults**
+ 
+
   "function parent() view returns (address)"
 
 ];
@@ -96,39 +96,22 @@ const ERC20_ABI = [
   
       const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
       const fac   = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
-      const iface   = new ethers.Interface(FACTORY_ABI);
-       // keccak256("VaultCreated(address,bytes32,address,address,address)")
-       const eventId = ethers.id(
-  "VaultCreated(address,bytes32,address,address,address)"
-);
-
-const filterBase = {
-  address: FACTORY_ADDR,
-  topics: [
-    eventId,
-   ethers.zeroPadValue(parentAddr, 32),   // indexed parentToken
-   qId                                    // indexed questionId
-  ]
-};
-
-const latest   = await provider.getBlockNumber();
-const STEP     = 40_000;                   // Polygon log-range safe size
-let   logs     = [];
-
-for (let from = latest; from > 0 && logs.length === 0; from -= STEP) {
- const to = from;
-  const fr = Math.max(1, from - STEP + 1);
-  try {
-    logs = await provider.getLogs({ ...filterBase,
-                                   fromBlock: ethers.hexValue(fr),
-                                   toBlock  : ethers.hexValue(to) });
- } catch (_) {
-   /* ignore window-size or archive-range errors and keep scanning */
-  }
-}
-  
       let vAddr, yesToken, noToken, created = false, txHash = "";
-  
+
+      /* step-A: try a staticCall – it only succeeds if the vault
+                 is already deployed, costs 0 gas                       */
+      try {
+        [vAddr, yesToken, noToken] =
+          await fac.partition.staticCall(parentAddr, UMA_ADAPTER, qId);
+      } catch {
+        /* step-B: vault not found – send a real tx to create it */
+        const rc = await (await fac.partition(parentAddr, UMA_ADAPTER, qId)).wait();
+        ({ vault: vAddr, yesToken, noToken } =
+          rc.logs.find(l => l.fragment?.name === "VaultCreated").args);
+        created = true;
+        txHash  = rc.hash;
+      }
+
       if (logs.length) {
         ({ vault: vAddr, yesToken, noToken } = iface.parseLog(logs.at(-1)).args);
       } else {
