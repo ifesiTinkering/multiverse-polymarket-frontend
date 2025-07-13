@@ -27,6 +27,7 @@ const VAULT_ABI = [
 const ERC20_ABI = [
     "function decimals() view returns (uint8)",
     "function approve(address,uint256)"
+    
   ];
   
   /* ─── globals ─────────────────────────────────────────────── */
@@ -48,12 +49,25 @@ const ERC20_ABI = [
       return p.pop() || p.pop();                       // handle trailing /
     } catch { return ""; }
   }
-  async function fetchQuestionId(slug) {
-    const r = await fetch(`https://clob.polymarket.com/markets?slug=${slug}`);
-    const j = await r.json();
-    if (!j.data?.length) throw new Error("Market not found");
-    return j.data[0].question_id;
-  }
+/**
+ * Calls Polymarket’s REST API once and returns both
+ *   • questionId (bytes32 hex string)
+ *   • market title (human-readable)
+ */
+async function fetchMarketInfo(slug) {
+  const r = await fetch(`https://clob.polymarket.com/markets?slug=${slug}`);
+  const j = await r.json();
+  if (!j.data?.length) throw new Error("Market not found");
+  return { qid: j.data[0].question_id, title: j.data[0].title };
+}
+
+
+  // async function fetchQuestionId(slug) {
+  //   const r = await fetch(`https://clob.polymarket.com/markets?slug=${slug}`);
+  //   const j = await r.json();
+  //   if (!j.data?.length) throw new Error("Market not found");
+  //   return j.data[0].question_id;
+  // }
   
   /* ─── keep vault & parentToken in sync ───────────────────── */
   async function updateVault(addr) {
@@ -94,7 +108,7 @@ const ERC20_ABI = [
       );
       if (!marketUrl || !parentAddr) throw new Error("Fill both inputs");
   
-      const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
+      const market = await fetchMarketInfo(slugFromUrl(marketUrl));   // {qid,title}
       const fac   = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
       let vAddr, yesToken, noToken, created = false, txHash = "";
 
@@ -102,10 +116,13 @@ const ERC20_ABI = [
                  is already deployed, costs 0 gas                       */
       try {
         [vAddr, yesToken, noToken] =
-          await fac.partition.staticCall(parentAddr, UMA_ADAPTER, qId);
+    await fac.partition.staticCall(
+         parentAddr, UMA_ADAPTER, market.qid);
       } catch {
         /* step-B: vault not found – send a real tx to create it */
-        const rc = await (await fac.partition(parentAddr, UMA_ADAPTER, qId)).wait();
+            const rc = await (
+                 await fac.partition(parentAddr, UMA_ADAPTER, market.qid)
+             ).wait();
         ({ vault: vAddr, yesToken, noToken } =
           rc.logs.find(l => l.fragment?.name === "VaultCreated").args);
         created = true;
