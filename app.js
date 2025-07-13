@@ -1,7 +1,7 @@
 /* global ethers **********************************************/
 
 /* ─── constants ───────────────────────────────────────────── */
-const FACTORY_ADDR = "0x63a9F0360e073688854099cc2A9Ca931B006a91A";   // MultiverseFactory
+const FACTORY_ADDR = "0xaD2C42aDf1Ee2acba8275A05030B420DCE1C34b1";   // MultiverseFactory
 const UMA_ADAPTER  = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d";   // UMA v3 (Polygon)
 
 /* ─── ABIs ────────────────────────────────────────────────── */
