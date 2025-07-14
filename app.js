@@ -1,7 +1,7 @@
 /* global ethers **********************************************/
 
 /* ─── constants ───────────────────────────────────────────── */
-const FACTORY_ADDR = "0xaD2C42aDf1Ee2acba8275A05030B420DCE1C34b1";   // MultiverseFactory
+const FACTORY_ADDR = "0xaD2C42aDf1Ee2acba8275A05030B420DCE1C34b1";   // MultiverseFactory 
 const UMA_ADAPTER  = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d";   // UMA v3 (Polygon)
 
 /* ─── ABIs ────────────────────────────────────────────────── */
@@ -115,9 +115,11 @@ async function fetchMarketInfo(slug) {
       /* step-A: try a staticCall – it only succeeds if the vault
                  is already deployed, costs 0 gas                       */
       try {
+        // add right after you received `market` from fetchMarketInfo
+const qid = market.qid.startsWith("0x") ? market.qid : "0x" + market.qid;
         [vAddr, yesToken, noToken] =
     await fac.partition.staticCall(
-         parentAddr, UMA_ADAPTER, market.qid);
+         parentAddr, UMA_ADAPTER, qid);
       } catch {
         /* step-B: vault not found – send a real tx to create it */
             const rc = await (
