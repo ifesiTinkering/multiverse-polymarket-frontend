@@ -29,6 +29,7 @@ const ERC20_ABI = [
     "function approve(address,uint256)"
   ];
   
+  const QUESTION_ID  = "0xcd4dac4522cab9b4feb28ac67acac37b0fc42a6ba71514f6ff1614842bf68c3f";
   /* ─── globals ─────────────────────────────────────────────── */
   let provider, signer, vault, parentToken;
   
@@ -88,13 +89,15 @@ const ERC20_ABI = [
     try {
       await ensureWallet();
   
-      const marketUrl  = document.getElementById("marketUrl").value.trim();
+     // const marketUrl  = document.getElementById("marketUrl").value.trim();
       const parentAddr = ethers.getAddress(
         document.getElementById("parentToken").value.trim()
       );
-      if (!marketUrl || !parentAddr) throw new Error("Fill both inputs");
+      // if (!marketUrl || !parentAddr) throw new Error("Fill both inputs");
   
-      const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
+      // const qId   = await fetchQuestionId(slugFromUrl(marketUrl));
+      if (!parentAddr) throw new Error("Fill the parent-token input");
+ const qId   = QUESTION_ID; 
       const fac   = new ethers.Contract(FACTORY_ADDR, FACTORY_ABI, signer);
       let vAddr, yesToken, noToken, created = false, txHash = "";
 
